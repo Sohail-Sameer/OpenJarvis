@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 DISCOVERY_ORDER = [
     "faster-whisper",
     "openai",
+    "groq",
     "deepgram",
 ]
 
@@ -38,6 +39,11 @@ def _create_backend(
             )
         elif key == "openai":
             api_key = os.environ.get("OPENAI_API_KEY", "")
+            if not api_key:
+                return None
+            return backend_cls(api_key=api_key)
+        elif key == "groq":
+            api_key = os.environ.get("GROQ_API_KEY", "")
             if not api_key:
                 return None
             return backend_cls(api_key=api_key)

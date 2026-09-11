@@ -118,7 +118,10 @@ function loadSettings(): Settings {
     defaultAgent: '',
     temperature: 0.7,
     maxTokens: 4096,
-    speechEnabled: false,
+    // On by default for this deployment: the mic button only ever does
+    // anything once /v1/speech/health reports a configured backend (see
+    // useSpeech.ts), so this just avoids a Settings trip on a fresh browser.
+    speechEnabled: true,
   };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);

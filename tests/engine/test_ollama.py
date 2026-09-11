@@ -35,6 +35,49 @@ def engine() -> OllamaEngine:
 
 
 @requires_respx
+class TestOllamaCloudAuth:
+    """Ollama's hosted Cloud API (https://ollama.com) requires Bearer auth,
+    unlike a local `ollama serve`, which accepts unauthenticated requests."""
+
+    def test_no_auth_header_without_api_key(self) -> None:
+        engine = OllamaEngine(host="http://testhost:11434")
+        with respx.mock:
+            route = respx.post("http://testhost:11434/api/chat").mock(
+                return_value=httpx.Response(
+                    200, json={"message": {"content": "hi"}, "done": True}
+                )
+            )
+            engine.generate([Message(role=Role.USER, content="hi")], model="m")
+        assert "Authorization" not in route.calls[0].request.headers
+
+    def test_sends_bearer_token_when_api_key_set(self, monkeypatch) -> None:
+        monkeypatch.setenv("OLLAMA_API_KEY", "secret-token")
+        engine = OllamaEngine(host="https://ollama.com")
+        with respx.mock:
+            route = respx.post("https://ollama.com/api/chat").mock(
+                return_value=httpx.Response(
+                    200, json={"message": {"content": "hi"}, "done": True}
+                )
+            )
+            engine.generate([Message(role=Role.USER, content="hi")], model="m")
+        assert route.calls[0].request.headers["Authorization"] == "Bearer secret-token"
+
+    def test_constructor_api_key_overrides_env(self, monkeypatch) -> None:
+        monkeypatch.setenv("OLLAMA_API_KEY", "env-token")
+        engine = OllamaEngine(host="https://ollama.com", api_key="explicit-token")
+        with respx.mock:
+            route = respx.post("https://ollama.com/api/chat").mock(
+                return_value=httpx.Response(
+                    200, json={"message": {"content": "hi"}, "done": True}
+                )
+            )
+            engine.generate([Message(role=Role.USER, content="hi")], model="m")
+        assert (
+            route.calls[0].request.headers["Authorization"] == "Bearer explicit-token"
+        )
+
+
+@requires_respx
 class TestOllamaGenerate:
     def test_generate_returns_content(self, engine: OllamaEngine) -> None:
         with respx.mock:

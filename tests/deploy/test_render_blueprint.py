@@ -55,7 +55,9 @@ def _run_fake_jarvis(tmp_path: Path, argv: list[str]) -> list[str]:
     return completed.stdout.rstrip(b"\0").decode().split("\0")
 
 
-def test_render_selects_cloud_engine_through_the_serve_cli(tmp_path: Path) -> None:
+def test_render_selects_ollama_cloud_engine_through_the_serve_cli(
+    tmp_path: Path,
+) -> None:
     service = _service()
     command = service["dockerCommand"]
     assert "$" not in command
@@ -73,17 +75,27 @@ def test_render_selects_cloud_engine_through_the_serve_cli(tmp_path: Path) -> No
         "--port",
         "10000",
         "--engine",
-        "cloud",
+        "ollama",
         "--model",
-        "gpt-4o-mini",
+        "gpt-oss:120b",
     ]
     parsed = serve.make_context("serve", args[1:])
     assert parsed.params["host"] == "0.0.0.0"
     assert parsed.params["port"] == 10000
-    assert parsed.params["engine_key"] == "cloud"
-    assert parsed.params["model_name"] == "gpt-4o-mini"
+    assert parsed.params["engine_key"] == "ollama"
+    assert parsed.params["model_name"] == "gpt-oss:120b"
     assert "OPENJARVIS_ENGINE" not in _env_vars(service)
     assert _env_vars(service)["PORT"] == {"key": "PORT", "value": "10000"}
+    # OllamaEngine talks to Ollama's hosted Cloud API (not a local `ollama
+    # serve`, which does not exist on this container) via these two.
+    assert _env_vars(service)["OLLAMA_HOST"] == {
+        "key": "OLLAMA_HOST",
+        "value": "https://ollama.com",
+    }
+    assert _env_vars(service)["OLLAMA_API_KEY"] == {
+        "key": "OLLAMA_API_KEY",
+        "sync": False,
+    }
 
 
 def test_docker_and_compose_command_overrides_remain_jarvis_subcommands(
@@ -130,18 +142,21 @@ def test_render_public_bind_generates_an_api_key() -> None:
     }
 
 
-def test_render_contract_requires_one_supported_cloud_provider() -> None:
+def test_render_contract_requires_ollama_and_groq_secrets() -> None:
     service = _service()
     env = _env_vars(service)
 
     assert service["runtime"] == "docker"
     assert service["dockerfilePath"] == "./deploy/docker/Dockerfile"
     assert service["healthCheckPath"] == "/health"
-    assert env["OPENAI_API_KEY"] == {"key": "OPENAI_API_KEY", "sync": False}
-    # Every sync:false entry is mandatory during initial Blueprint creation.
+    assert env["OLLAMA_API_KEY"] == {"key": "OLLAMA_API_KEY", "sync": False}
+    assert env["GROQ_API_KEY"] == {"key": "GROQ_API_KEY", "sync": False}
+    # Every sync:false entry is mandatory during initial Blueprint creation:
+    # OLLAMA_API_KEY drives chat (Ollama Cloud), GROQ_API_KEY drives voice
+    # input (Groq Whisper transcription).
     assert [
         item["key"] for item in service["envVars"] if item.get("sync") is False
-    ] == ["OPENAI_API_KEY"]
+    ] == ["OLLAMA_API_KEY", "GROQ_API_KEY"]
 
 
 def test_render_free_tier_ephemeral_storage_is_explicitly_documented() -> None:

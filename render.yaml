@@ -1,6 +1,13 @@
 # Render Blueprint for the OpenJarvis FastAPI server.
 # Deploys src/openjarvis/server/app.py via deploy/docker/Dockerfile.
-# Apply at: https://dashboard.render.com/blueprint/new?repo=https://github.com/open-jarvis/OpenJarvis
+# Apply at: https://dashboard.render.com/blueprint/new?repo=<your-fork-url>
+#
+# This blueprint is pinned to Ollama's hosted Cloud API (https://ollama.com)
+# running gpt-oss:120b, instead of OpenAI. It needs an Ollama API key
+# (https://ollama.com/settings/keys) — the model itself runs on Ollama's
+# servers, not on this Render instance, so the free plan's lack of GPU is not
+# a problem. Voice input (speech-to-text) uses Groq's hosted Whisper API and
+# needs a separate Groq API key (https://console.groq.com/keys).
 services:
   - type: web
     name: openjarvis-server
@@ -12,17 +19,10 @@ services:
     # Override the Dockerfile CMD while preserving its `jarvis` entrypoint.
     # Render's default web-service port is 10000. Pin PORT and the CLI argument
     # to that same value because Docker commands do not interpolate `$PORT`.
-    # Pin a cloud model as well as the engine. The repository's default model
-    # is local-only, so omitting this would make `jarvis serve` reject the
-    # otherwise healthy cloud engine during startup.
-    dockerCommand: serve --host 0.0.0.0 --port 10000 --engine cloud --model gpt-4o-mini
+    dockerCommand: serve --host 0.0.0.0 --port 10000 --engine ollama --model gpt-oss:120b
     healthCheckPath: /health
     autoDeploy: true
     envVars:
-      # Force the cloud engine path. The free Render plan has no GPU and the
-      # bundled local backends (Ollama/vLLM) cannot run here. The command above
-      # selects the OpenAI-backed cloud engine and a model it can serve.
-
       # Keep Render's expected public port aligned with the fixed Docker
       # command above. Change both values together when customizing the port.
       - key: PORT
@@ -33,11 +33,19 @@ services:
       - key: OPENJARVIS_API_KEY
         generateValue: true
 
-      # Required at initial Blueprint creation. Render's `sync: false` fields
-      # are operator-supplied secrets; using one provider here keeps the
-      # one-click contract deterministic instead of incorrectly requiring a
-      # key for every supported cloud provider.
-      - key: OPENAI_API_KEY
+      # Points the "ollama" engine at Ollama's hosted Cloud API instead of a
+      # local `ollama serve` (which does not exist on this container).
+      - key: OLLAMA_HOST
+        value: https://ollama.com
+
+      # Bearer token for the above. Get one at https://ollama.com/settings/keys.
+      - key: OLLAMA_API_KEY
+        sync: false
+
+      # Powers voice input (browser mic -> /v1/speech/transcribe -> Groq
+      # Whisper). Get one at https://console.groq.com/keys. Optional: leave
+      # unset and the mic button stays disabled with a "not configured" tooltip.
+      - key: GROQ_API_KEY
         sync: false
 
       # The free service filesystem is ephemeral. OpenJarvis state under this

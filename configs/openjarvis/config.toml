@@ -1,14 +1,14 @@
-# OpenJarvis configuration — GLM-4.7-Flash eval on 8x A100-80GB
+# OpenJarvis configuration — Ollama Cloud (gpt-oss:120b)
 
 # ═══════════════════════════════════════════════════════════════
 # PILLAR 1: Intelligence — The Model
 # ═══════════════════════════════════════════════════════════════
 [intelligence]
-default_model = "zai-org/GLM-4.7-Flash"   # HuggingFace model ID
-fallback_model = "glm-4.7-flash"          # Catalog alias fallback
-preferred_engine = "vllm"                 # MoE model, vLLM is best for A100s
-provider = "local"                        # Running locally on this machine
-quantization = "none"                     # Full precision, we have 640GB VRAM
+default_model = "gpt-oss:120b"            # Served by Ollama's hosted Cloud API
+fallback_model = "gpt-oss:120b"
+preferred_engine = "ollama"
+provider = "cloud"                        # Runs on ollama.com, not this machine
+quantization = "none"
 # Generation defaults for eval
 temperature = 0.0                         # Deterministic for reproducibility
 max_tokens = 2048                         # Standard eval output length
@@ -40,13 +40,17 @@ enabled = true
 # PILLAR 4: Engine — The Inference Runtime
 # ═══════════════════════════════════════════════════════════════
 [engine]
-default = "vllm"
+default = "ollama"
 
 [engine.vllm]
 host = "http://localhost:8001"            # vLLM serving port
 
 [engine.ollama]
-host = "http://localhost:11434"
+# Ollama's hosted Cloud API. Requires OLLAMA_API_KEY in the environment
+# (see https://ollama.com/settings/keys) — the OllamaEngine sends it as an
+# Authorization: Bearer header. Point this back at
+# "http://localhost:11434" to use a local `ollama serve` instead.
+host = "https://ollama.com"
 
 [engine.sglang]
 host = "http://localhost:30000"

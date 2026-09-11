@@ -119,6 +119,7 @@ class OllamaEngine(AsyncHTTPEngineMixin, InferenceEngine):
         self,
         host: str | None = None,
         *,
+        api_key: str | None = None,
         timeout: float = 1800.0,
     ) -> None:
         # Priority: explicit host (from config.toml) > OLLAMA_HOST env var > default
@@ -126,6 +127,13 @@ class OllamaEngine(AsyncHTTPEngineMixin, InferenceEngine):
             env_host = os.environ.get("OLLAMA_HOST")
             host = env_host or self._DEFAULT_HOST
         self._host = host.rstrip("/")
+        # Bearer auth for Ollama's hosted cloud API (https://ollama.com), which
+        # requires an ``Authorization`` header on every request unlike a local
+        # ``ollama serve``. ``None`` for local hosts keeps requests header-free.
+        self._api_key = api_key or os.environ.get("OLLAMA_API_KEY") or None
+        self._headers = (
+            {"Authorization": f"Bearer {self._api_key}"} if self._api_key else None
+        )
         # Used by the shared async streaming plumbing (AsyncHTTPEngineMixin) so a
         # wedged token read is bounded by ``timeout`` instead of hanging the
         # single event loop for the httpx default.
@@ -134,7 +142,9 @@ class OllamaEngine(AsyncHTTPEngineMixin, InferenceEngine):
         # the async stream path with no real Ollama server. ``None`` in production so
         # httpx uses its default networking.
         self._async_transport: httpx.AsyncBaseTransport | None = None
-        self._client = httpx.Client(base_url=self._host, timeout=timeout)
+        self._client = httpx.Client(
+            base_url=self._host, timeout=timeout, headers=self._headers
+        )
         # Last stream usage — captured from Ollama's final chunk
         self._last_stream_usage: Dict[str, int] = {}
 
