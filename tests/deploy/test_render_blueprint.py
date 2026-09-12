@@ -119,7 +119,7 @@ def test_docker_and_compose_command_overrides_remain_jarvis_subcommands(
         "--host",
         "0.0.0.0",
         "--port",
-        "8000",
+        "7860",
     ]
     assert (
         _run_fake_jarvis(tmp_path, [*entrypoint, *default_command]) == default_command
