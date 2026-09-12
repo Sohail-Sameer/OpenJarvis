@@ -53,3 +53,13 @@ services:
       # docs/deployment/render.md before storing credentials or durable state.
       - key: OPENJARVIS_HOME
         value: /home/openjarvis/.openjarvis
+
+      # Disables tools that read/write the local filesystem, run shell
+      # commands, or touch a local git repo/database (file_read, file_write,
+      # shell_exec, git_tool, db_query, code_interpreter, repl, ...) — not
+      # meaningful or safe to expose to visitors of a public website. Chat,
+      # memory, knowledge base, web search, weather, images, etc. are
+      # unaffected. Full tool set stays available in the desktop app. See
+      # src/openjarvis/tools/__init__.py.
+      - key: OPENJARVIS_PROFILE
+        value: cloud
