@@ -76,6 +76,11 @@ RUN groupadd --system --gid 10001 openjarvis && \
     useradd --system --uid 10001 --gid openjarvis \
         --create-home --home-dir /home/openjarvis openjarvis
 ENV HOME=/home/openjarvis
+# Without this, Python fully buffers stdout when it's not attached to a TTY
+# (i.e. always, in a container). If the process is killed before a flush,
+# whatever it printed — startup banner, warnings, tracebacks — never reaches
+# `docker logs`/Render's log stream. Costs a little throughput, worth it.
+ENV PYTHONUNBUFFERED=1
 USER openjarvis
 
 EXPOSE 8000
