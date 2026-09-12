@@ -125,3 +125,42 @@ not fine if you want it to remember things between sessions. Fix is a paid
 Render plan with a persistent disk mounted at
 `/home/openjarvis/.openjarvis` — not something I turned on by default
 since it costs money.
+
+## Update: moved to Hugging Face Spaces (5 more files)
+
+After two Render deploys failed identically (`Exited with status 128`, zero
+app output, across two completely different code states — see the chat
+history), the working theory settled on free-tier memory pressure (Render
+free = 512MB). Rather than keep guessing blind, we're trying Hugging Face
+Spaces' CPU Basic tier instead — same $0, but 16GB of RAM.
+
+| File | Change |
+|---|---|
+| `README.md` | Added the YAML frontmatter block Spaces requires at the very top (`sdk: docker`, `app_port: 7860`, ...) — everything below it is untouched, so the existing project README still renders as the Space's description. |
+| `deploy/docker/Dockerfile` | Default `CMD`/`EXPOSE` port changed `8000` → `7860` (Spaces' convention). Harmless for Render, which fully overrides `CMD` via `dockerCommand` anyway — this only matters for platforms (like Spaces) that run the Dockerfile's own default. |
+| `docs/deployment/huggingface.md` | **New.** Spaces-specific deploy walkthrough — creating the Space, setting secrets by hand (no Render-style auto-prompt), the same ephemeral-storage caveat. |
+| `docs/deployment/render.md` | Added a "Troubleshooting: Exited with status 128" section capturing what we found, for the record — Render itself isn't removed, just no longer the primary path. |
+| `.github/workflows/sync-to-hf-space.yml` | **New.** Auto-pushes every commit on `main` into the Space repo (needs `HF_TOKEN` + `HF_SPACE_REPO` as GitHub repo secrets) — a no-op until those are set. This exists specifically to avoid a repeat of the missing-`tests/`-folder incident from copying files by hand. |
+| `tests/deploy/test_render_blueprint.py` | Updated the one test that pinned the old `8000` default port. |
+
+**Verified:** `pytest tests/deploy/ tests/deployment/test_docker.py` → 28
+passed. Both new YAML files (the workflow, the README frontmatter) parse
+correctly.
+
+**Not verified:** an actual Space build — I don't have a Hugging Face
+account to test against, so the first real build there is still the first
+real test, same caveat as every Docker-build claim in this file.
+
+### Deploy steps (Spaces)
+
+1. Create a Space at huggingface.co → SDK: **Docker**.
+2. Either `git push` this repo to the Space's git remote directly, or set
+   `HF_TOKEN` + `HF_SPACE_REPO` as GitHub secrets to use the new sync
+   workflow instead.
+3. In the Space's Settings → Variables and secrets, add `OLLAMA_API_KEY`,
+   `GROQ_API_KEY` (optional), `OPENJARVIS_API_KEY` (generate your own —
+   e.g. `openssl rand -hex 32`), and `OLLAMA_HOST=https://ollama.com`.
+4. Wait for the build; the app lands at
+   `https://<you>-<space-name>.hf.space`.
+
+Full detail in `docs/deployment/huggingface.md`.
