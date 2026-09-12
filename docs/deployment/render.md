@@ -49,3 +49,24 @@ preserve the default OpenJarvis home.
 
 The Blueprint intentionally does not declare a disk because Render does not
 support persistent disks on free services.
+
+## Troubleshooting: "Exited with status 128" with no app output
+
+If the build succeeds but the deploy fails immediately after with no
+application log output at all (not even the startup banner), Render's own
+support guidance is to add logging and see what surfaces — which does not
+help when the process is killed before anything is written. The most likely
+cause on the free tier is an out-of-memory kill during Python's import: this
+app's dependency footprint (FastAPI, the compiled Rust extension, `openai`,
+and transitively `pandas`/`pyarrow`/`huggingface_hub`) is heavier than the
+free tier's 512MB comfortably holds. The Render Metrics tab often shows
+nothing useful for a deploy that never went live.
+
+The fastest way to confirm or rule this out: temporarily bump the service to
+Render's Starter plan (more RAM, reversible) and redeploy the identical
+commit. If that succeeds, it's memory — either stay on a paid plan or try
+[Hugging Face Spaces](huggingface.md), whose free tier offers substantially
+more RAM (16GB) for the same $0. If it still fails identically on Starter,
+the cause is outside the app; it's worth opening a ticket with Render
+support directly, since their own community forum has documented cases of
+this exact symptom being a platform-side issue.
