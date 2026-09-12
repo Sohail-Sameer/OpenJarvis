@@ -83,10 +83,12 @@ ENV HOME=/home/openjarvis
 ENV PYTHONUNBUFFERED=1
 USER openjarvis
 
-EXPOSE 8000
+EXPOSE 7860
 
 # Keep `jarvis` as the image entrypoint so Docker and Compose command overrides
 # remain subcommands (for example, `docker run IMAGE serve ...`). Platforms
-# such as Render replace CMD while preserving this entrypoint.
+# such as Render replace CMD while preserving this entrypoint; Hugging Face
+# Spaces has no such override, so this default CMD is what actually runs
+# there — its port must match `app_port` in the top-level README.md frontmatter.
 ENTRYPOINT ["jarvis"]
-CMD ["serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["serve", "--host", "0.0.0.0", "--port", "7860"]
