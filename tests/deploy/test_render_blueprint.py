@@ -159,6 +159,14 @@ def test_render_contract_requires_ollama_and_groq_secrets() -> None:
     ] == ["OLLAMA_API_KEY", "GROQ_API_KEY"]
 
 
+def test_render_uses_the_cloud_tool_profile() -> None:
+    """Local-filesystem/shell/git/db tools must be off by default on the
+    public deploy — see src/openjarvis/tools/__init__.py's _CLOUD_PROFILE_DISABLED."""
+    service = _service()
+    env = _env_vars(service)
+    assert env["OPENJARVIS_PROFILE"] == {"key": "OPENJARVIS_PROFILE", "value": "cloud"}
+
+
 def test_render_free_tier_ephemeral_storage_is_explicitly_documented() -> None:
     service = _service()
     env = _env_vars(service)
