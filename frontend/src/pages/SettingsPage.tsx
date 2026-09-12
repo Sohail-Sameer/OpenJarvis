@@ -847,6 +847,14 @@ export function SettingsPage() {
                 >
                   Documentation
                 </a>
+                <a
+                  href="https://open-jarvis.github.io/OpenJarvis/downloads/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  Download desktop app
+                </a>
               </div>
             </div>
           </Section>
