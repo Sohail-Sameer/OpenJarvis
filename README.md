@@ -1,3 +1,14 @@
+---
+title: OpenJarvis
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+license: apache-2.0
+---
+
 <div align="center">
   <img alt="OpenJarvis" src="assets/OpenJarvis_Horizontal_Logo.png" width="400">
 
