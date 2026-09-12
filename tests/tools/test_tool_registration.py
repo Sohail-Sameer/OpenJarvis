@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import subprocess
 import sys
 
@@ -153,6 +154,90 @@ def test_calendar_tools_register_when_connector_is_imported_first():
         capture_output=True,
         text=True,
         check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_cloud_profile_skips_local_filesystem_and_shell_tools():
+    """OPENJARVIS_PROFILE=cloud must not register file/shell/git/db tools,
+    but must leave everything else (memory, knowledge, search, ...) intact."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import openjarvis.tools; "
+                "from openjarvis.core.registry import ToolRegistry; "
+                "registered = set(ToolRegistry.keys()); "
+                "denied = {'file_read', 'file_write', 'apply_patch', "
+                "'shell_exec', 'db_query', 'code_interpreter', 'repl', "
+                "'git_status'}; "
+                "leaked = denied & registered; "
+                "assert not leaked, f'Should be disabled: {sorted(leaked)}'; "
+                "expected_present = {'calculator', 'think', 'web_search', "
+                "'memory_store', 'get_weather'}; "
+                "missing = expected_present - registered; "
+                "assert not missing, f'Wrongly disabled: {sorted(missing)}'"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "OPENJARVIS_PROFILE": "cloud"},
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_disabled_tools_env_var_is_additive_to_profile():
+    """OPENJARVIS_DISABLED_TOOLS can trim further on top of a profile (or
+    stand alone with no profile set)."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import openjarvis.tools; "
+                "from openjarvis.core.registry import ToolRegistry; "
+                "assert 'calculator' not in set(ToolRegistry.keys())"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={**os.environ, "OPENJARVIS_DISABLED_TOOLS": "calculator"},
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_no_profile_set_registers_everything_including_denylist_tools():
+    """Baseline: with neither env var set, behavior is unchanged from before
+    the cloud-profile gating existed (belt-and-suspenders alongside
+    test_all_builtin_tools_registered, but via a clean subprocess)."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "import openjarvis.tools; "
+                "from openjarvis.core.registry import ToolRegistry; "
+                "registered = set(ToolRegistry.keys()); "
+                "expected = {'file_read', 'file_write', 'shell_exec', "
+                "'db_query', 'code_interpreter', 'repl'}; "
+                "missing = expected - registered; "
+                "assert not missing, f'Missing: {sorted(missing)}'"
+            ),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+        env={
+            k: v
+            for k, v in os.environ.items()
+            if k not in ("OPENJARVIS_PROFILE", "OPENJARVIS_DISABLED_TOOLS")
+        },
     )
 
     assert result.returncode == 0, result.stderr
